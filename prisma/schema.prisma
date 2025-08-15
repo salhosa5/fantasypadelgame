@@ -1,0 +1,231 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Position {
+  GK
+  DEF
+  MID
+  FWD
+}
+
+enum PlayerStatus {
+  FIT
+  INJURED
+  SUSPENDED
+}
+
+enum FixtureStatus {
+  UPCOMING
+  LIVE
+  FINISHED
+  SCORED
+}
+
+enum ChipType {
+  NONE
+  WILDCARD
+  BENCH_BOOST
+  TRIPLE_CAPTAIN
+  TWO_CAPTAINS
+}
+
+model User {
+  id             String           @id @default(cuid())
+  email          String           @unique
+  passwordHash   String
+  teamName       String
+  favoriteClub   String?
+  createdAt      DateTime         @default(now())
+  squads         UserSquad[]
+  transfers      Transfer[]
+  points         UserPoints[]
+  leagues        LeagueMember[]
+  League         League[]
+  LeagueStanding LeagueStanding[]
+}
+
+model Team {
+  id           Int       @id @default(autoincrement())
+  name         String
+  shortName    String    @db.VarChar(8)
+  logoUrl      String?
+  players      Player[]
+  homeFixtures Fixture[] @relation("HomeTeam")
+  awayFixtures Fixture[] @relation("AwayTeam")
+
+  @@unique([name])
+}
+
+model Player {
+  id        Int          @id @default(autoincrement())
+  teamId    Int
+  team      Team         @relation(fields: [teamId], references: [id])
+  name      String
+  position  Position
+  price     Decimal      @db.Decimal(6, 1)
+  status    PlayerStatus @default(FIT)
+  createdAt DateTime     @default(now())
+  stats     PlayerStat[]
+  picks     UserPick[] // ⬅ back-relation for UserPick.player
+}
+
+model Gameweek {
+  id       Int         @id @default(autoincrement())
+  name     String
+  deadline DateTime
+  squads   UserSquad[]
+
+  // ⬅ back-relations required by other models
+  fixtures  Fixture[]
+  transfers Transfer[]
+  points    UserPoints[]
+  standings LeagueStanding[]
+}
+
+model Fixture {
+  id          Int           @id @default(autoincrement())
+  gameweekId  Int
+  gameweek    Gameweek      @relation(fields: [gameweekId], references: [id])
+  homeTeamId  Int
+  homeTeam    Team          @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeamId  Int
+  awayTeam    Team          @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  kickoff     DateTime
+  status      FixtureStatus @default(UPCOMING)
+  homeGoals   Int?
+  awayGoals   Int?
+  scored      Boolean       @default(false)
+  playerStats PlayerStat[]
+}
+
+model PlayerStat {
+  id            Int     @id @default(autoincrement())
+  fixtureId     Int
+  fixture       Fixture @relation(fields: [fixtureId], references: [id])
+  playerId      Int
+  player        Player  @relation(fields: [playerId], references: [id])
+  minutes       Int     @default(0)
+  goals         Int     @default(0)
+  assists       Int     @default(0)
+  cleanSheet    Boolean @default(false)
+  goalsConceded Int     @default(0)
+  penSaved      Int     @default(0)
+  penMissed     Int     @default(0)
+  yellowCards   Int     @default(0)
+  redCards      Int     @default(0)
+  ownGoals      Int     @default(0)
+  motm          Boolean @default(false)
+
+  @@unique([fixtureId, playerId])
+  @@index([fixtureId])
+  @@index([playerId])
+}
+
+model UserSquad {
+  id         Int        @id @default(autoincrement())
+  userId     String
+  gameweekId Int
+  budget     Decimal    @default(100.0)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  picks      UserPick[]
+
+  user     User     @relation(fields: [userId], references: [id])
+  gameweek Gameweek @relation(fields: [gameweekId], references: [id])
+
+  @@unique([userId, gameweekId]) // one squad per GW per user
+}
+
+model UserPick {
+  id        Int     @id @default(autoincrement())
+  squadId   Int
+  playerId  Int
+  role      String // 'S11' | 'B1' | 'B2' | 'B3' | 'B4'
+  isCaptain Boolean @default(false)
+  isVice    Boolean @default(false)
+
+  squad  UserSquad @relation(fields: [squadId], references: [id])
+  player Player    @relation(fields: [playerId], references: [id])
+
+  @@unique([squadId, playerId])
+}
+
+model Transfer {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  gameweekId  Int
+  gameweek    Gameweek @relation(fields: [gameweekId], references: [id])
+  outPlayerId Int
+  inPlayerId  Int
+  priceDiff   Decimal? @db.Decimal(6, 1)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, gameweekId])
+}
+
+model UserPoints {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  gameweekId  Int
+  gameweek    Gameweek @relation(fields: [gameweekId], references: [id])
+  gwPoints    Int      @default(0)
+  totalPoints Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, gameweekId])
+  @@index([gameweekId])
+}
+
+model League {
+  id             String           @id @default(cuid())
+  name           String
+  code           String           @unique
+  adminUserId    String
+  adminUser      User             @relation(fields: [adminUserId], references: [id])
+  members        LeagueMember[]
+  LeagueStanding LeagueStanding[]
+}
+
+model LeagueMember {
+  id        String   @id @default(cuid())
+  leagueId  String
+  league    League   @relation(fields: [leagueId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([leagueId, userId])
+  @@index([userId])
+}
+
+model LeagueStanding {
+  id          String   @id @default(cuid())
+  leagueId    String
+  league      League   @relation(fields: [leagueId], references: [id])
+  gameweekId  Int
+  gameweek    Gameweek @relation(fields: [gameweekId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  gwPoints    Int
+  totalPoints Int
+
+  @@unique([leagueId, gameweekId, userId])
+  @@index([leagueId, gameweekId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
