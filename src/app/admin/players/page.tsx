@@ -1,70 +1,210 @@
-import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+// src/app/admin/players/page.tsx
+"use client";
 
-export const revalidate = 0; // disables caching so the query runs fresh every time
+import { useEffect, useMemo, useState } from "react";
 
-export default async function PlayersPage() {
-  console.log("➡️ Fetching players from DB...");
-  const players = await prisma.player.findMany({
-    include: { team: true },
-    orderBy: [
-      { team: { name: "asc" } },
-      { position: "asc" },
-      { name: "asc" }
-    ],
-  });
-  console.log(`✅ Got ${players.length} players`);
+type Team = { id: number; shortName: string; name: string };
+type Player = {
+  id: number;
+  name: string;
+  teamId: number;
+  position: "GK"|"DEF"|"MID"|"FWD";
+  price: string; // from API as string
+  status: "FIT"|"INJURED"|"SUSPENDED";
+  team: Team;
+};
+
+export default function PlayersAdmin() {
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  // filters
+  const [q, setQ] = useState("");
+  const [fTeam, setFTeam] = useState<number | "">("");
+  const [fPos, setFPos] = useState<""|"GK"|"DEF"|"MID"|"FWD">("");
+
+  // new player
+  const [nName, setNName] = useState("");
+  const [nTeam, setNTeam] = useState<number | "">("");
+  const [nPos, setNPos] = useState<"GK"|"DEF"|"MID"|"FWD">("MID");
+  const [nPrice, setNPrice] = useState("5.0");
+  const [nStatus, setNStatus] = useState<"FIT"|"INJURED"|"SUSPENDED">("FIT");
+
+  const safeJson = async (res: Response) => {
+    const t = await res.text();
+    try { return t ? JSON.parse(t) : {}; } catch { return {}; }
+  };
+
+  const load = async () => {
+    setLoading(true); setErr(null);
+    try {
+      const r = await fetch("/api/admin/players", { cache: "no-store" });
+      const j = await safeJson(r);
+      if (!r.ok) { setErr(j.error || "Failed to load"); return; }
+      setTeams(j.teams ?? []);
+      setPlayers(j.players ?? []);
+    } catch {
+      setErr("Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const filtered = useMemo(() => {
+    return players.filter(p => {
+      if (q && !p.name.toLowerCase().includes(q.toLowerCase())) return false;
+      if (fTeam && p.teamId !== fTeam) return false;
+      if (fPos && p.position !== fPos) return false;
+      return true;
+    });
+  }, [players, q, fTeam, fPos]);
+
+  const createPlayer = async () => {
+    if (!nName || !nTeam || !nPos) { setErr("Fill name/team/pos"); return; }
+    setErr(null);
+    try {
+      const r = await fetch("/api/admin/players", {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({
+          name: nName,
+          teamId: Number(nTeam),
+          position: nPos,
+          price: Number(nPrice || 0),
+          status: nStatus,
+        })
+      });
+      const j = await safeJson(r);
+      if (!r.ok) { setErr(j.error || "Create failed"); return; }
+      setNName(""); setNTeam(""); setNPos("MID"); setNPrice("5.0"); setNStatus("FIT");
+      await load();
+    } catch {
+      setErr("Create failed");
+    }
+  };
+
+  const updatePlayer = async (id: number, patch: Partial<{ teamId:number; position: Player["position"]; price:number; status: Player["status"] }>) => {
+    setErr(null);
+    try {
+      const r = await fetch("/api/admin/players", {
+        method: "PATCH",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({ id, ...patch }),
+      });
+      const j = await safeJson(r);
+      if (!r.ok) { setErr(j.error || "Update failed"); return; }
+      await load();
+    } catch {
+      setErr("Update failed");
+    }
+  };
+
+  const removePlayer = async (id: number) => {
+    if (!confirm("Delete this player? This also removes any picks and stats for him.")) return;
+    setErr(null);
+    try {
+      const r = await fetch(`/api/admin/players?id=${id}`, { method: "DELETE" });
+      const j = await safeJson(r);
+      if (!r.ok) { setErr(j.error || "Delete failed"); return; }
+      await load();
+    } catch {
+      setErr("Delete failed");
+    }
+  };
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Players</h1>
-        <Link
-          href="/admin/players/new"
-          className="px-3 py-2 rounded bg-blue-600 text-white"
-        >
-          + Add player
-        </Link>
+        <h1 className="text-xl font-bold">Admin — Players</h1>
+        <div className="text-sm text-gray-600">{players.length} players</div>
       </div>
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left border-b">
-            <th className="py-2">Name</th>
-            <th>Team</th>
-            <th>Pos</th>
-            <th>Price</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {players.map((p) => (
-            <tr key={p.id} className="border-b">
-              <td className="py-2">{p.name}</td>
-              <td>{p.team.name}</td>
-              <td>{p.position}</td>
-              <td>{p.price.toString()}</td>
-              <td>{p.status}</td>
-              <td>
-                <Link
-                  href={`/admin/players/${p.id}`}
-                  className="text-blue-600 underline"
-                >
-                  Edit
-                </Link>
-              </td>
-            </tr>
+      {err && <div className="text-red-600">{err}</div>}
+      {loading && <div>Loading…</div>}
+
+      {/* Create */}
+      <div className="border rounded p-4 space-y-2">
+        <h2 className="font-semibold">Create Player</h2>
+        <div className="grid md:grid-cols-5 gap-2">
+          <input className="border rounded px-2 py-1" placeholder="Name" value={nName} onChange={e=>setNName(e.target.value)} />
+          <select className="border rounded px-2 py-1" value={nTeam} onChange={e=>setNTeam(e.target.value ? Number(e.target.value) : "")}>
+            <option value="">Team</option>
+            {teams.map(t => <option key={t.id} value={t.id}>{t.shortName}</option>)}
+          </select>
+          <select className="border rounded px-2 py-1" value={nPos} onChange={e=>setNPos(e.target.value as any)}>
+            <option value="GK">GK</option><option value="DEF">DEF</option><option value="MID">MID</option><option value="FWD">FWD</option>
+          </select>
+          <input className="border rounded px-2 py-1" type="number" step="0.1" min="3.5" value={nPrice} onChange={e=>setNPrice(e.target.value)} />
+          <select className="border rounded px-2 py-1" value={nStatus} onChange={e=>setNStatus(e.target.value as any)}>
+            <option value="FIT">FIT</option><option value="INJURED">INJURED</option><option value="SUSPENDED">SUSPENDED</option>
+          </select>
+        </div>
+        <button onClick={createPlayer} className="px-3 py-1 rounded bg-black text-white">Add Player</button>
+      </div>
+
+      {/* Filters */}
+      <div className="border rounded p-3 flex flex-wrap gap-2 items-center">
+        <input className="border rounded px-2 py-1" placeholder="Search name…" value={q} onChange={e=>setQ(e.target.value)} />
+        <select className="border rounded px-2 py-1" value={fTeam} onChange={e=>setFTeam(e.target.value ? Number(e.target.value) : "")}>
+          <option value="">All teams</option>
+          {teams.map(t => <option key={t.id} value={t.id}>{t.shortName}</option>)}
+        </select>
+        <select className="border rounded px-2 py-1" value={fPos} onChange={e=>setFPos(e.target.value as any)}>
+          <option value="">All positions</option>
+          <option value="GK">GK</option><option value="DEF">DEF</option><option value="MID">MID</option><option value="FWD">FWD</option>
+        </select>
+      </div>
+
+      {/* List */}
+      <div className="border rounded">
+        <div className="px-3 py-2 border-b font-semibold">Players</div>
+        <div className="divide-y">
+          {filtered.map(p => (
+            <div key={p.id} className="p-3 grid md:grid-cols-7 items-center gap-2">
+              <div className="font-medium">{p.name}</div>
+              <div className="text-sm">{p.team.shortName}</div>
+              <select
+                className="border rounded px-2 py-1 text-sm"
+                value={p.teamId}
+                onChange={e=>updatePlayer(p.id, { teamId: Number(e.target.value) })}
+              >
+                {teams.map(t => <option key={t.id} value={t.id}>{t.shortName}</option>)}
+              </select>
+              <select
+                className="border rounded px-2 py-1 text-sm"
+                value={p.position}
+                onChange={e=>updatePlayer(p.id, { position: e.target.value as any })}
+              >
+                <option value="GK">GK</option><option value="DEF">DEF</option>
+                <option value="MID">MID</option><option value="FWD">FWD</option>
+              </select>
+              <input
+                className="border rounded px-2 py-1 text-sm"
+                type="number" step="0.1"
+                value={p.price}
+                onChange={e=>updatePlayer(p.id, { price: Number(e.target.value || 0) })}
+              />
+              <select
+                className="border rounded px-2 py-1 text-sm"
+                value={p.status}
+                onChange={e=>updatePlayer(p.id, { status: e.target.value as any })}
+              >
+                <option value="FIT">FIT</option><option value="INJURED">INJURED</option><option value="SUSPENDED">SUSPENDED</option>
+              </select>
+              <div className="flex justify-end">
+                <button className="text-sm px-2 py-1 rounded border" onClick={()=>removePlayer(p.id)}>Delete</button>
+              </div>
+            </div>
           ))}
-          {players.length === 0 && (
-            <tr>
-              <td colSpan={6} className="py-6 text-center text-gray-500">
-                No players yet.
-              </td>
-            </tr>
+          {filtered.length === 0 && (
+            <div className="p-3 text-sm text-gray-600">No players match filters.</div>
           )}
-        </tbody>
-      </table>
+        </div>
+      </div>
     </div>
   );
 }

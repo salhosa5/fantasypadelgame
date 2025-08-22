@@ -139,7 +139,12 @@ model UserSquad {
   user     User     @relation(fields: [userId], references: [id])
   gameweek Gameweek @relation(fields: [gameweekId], references: [id])
 
-  @@unique([userId, gameweekId]) // one squad per GW per user
+  score SquadScore?
+
+  freeTransfers Int      @default(1)
+  chip          ChipType @default(NONE)
+
+  @@unique([userId, gameweekId])
 }
 
 model UserPick {
@@ -228,4 +233,14 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// Totals for a squad in a given GW (1 row per UserSquad)
+model SquadScore {
+  id        Int      @id @default(autoincrement())
+  squadId   Int      @unique
+  points    Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  squad UserSquad @relation(fields: [squadId], references: [id], onDelete: Cascade)
 }

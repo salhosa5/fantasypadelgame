@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useParams } from 'next/navigation';   // ⬅️ add useParams
+import { useRouter, useParams } from 'next/navigation';
 import { pointsFromStat } from '@/lib/scoring';
 
 type Row = {
@@ -53,19 +53,52 @@ export default function MatchEntry() {
   };
 
   const save = async (goBack = false) => {
-    const res = await fetch('/api/admin/match', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fixtureId, homePlayers: home, awayPlayers: away }),
-    });
-    const j = await res.json();
-    if (!res.ok) return alert(j.error || 'Error');
+    try {
+      const res = await fetch("/api/admin/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fixtureId, homePlayers: home, awayPlayers: away }),
+      });
 
-    if (goBack) {
-      router.push('/admin/fixtures');
-    } else {
-      await fetchFixture(); // reload fresh after save
-      alert('Saved!');
+      // tolerate empty body or a non-JSON error page
+      const text = await res.text();
+      const j = text ? JSON.parse(text) : {};
+
+      if (!res.ok) {
+        alert(j.error || "Error");
+        return;
+      }
+
+      if (goBack) {
+        router.push("/admin/fixtures");
+      } else {
+        await fetchFixture();
+        alert("Saved!");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Network/parse error while saving");
+    }
+  };
+
+  // ---- NEW: Run Auto-Subs (GW1) button handler ----
+  const runAutoSubs = async () => {
+    try {
+      const r = await fetch('/api/admin/apply-autosubs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gwName: 'GW1' }), // change if your GW name differs
+      });
+      const text = await r.text();
+      const j = text ? JSON.parse(text) : {};
+      if (!r.ok) {
+        alert(j.error || 'Auto-subs failed');
+        return;
+      }
+      alert(`Auto-subs done for ${j.gameweek}. Updated squads: ${j.updatedSquads}`);
+    } catch (e) {
+      console.error(e);
+      alert('Network/parse error while running auto-subs');
     }
   };
 
@@ -152,6 +185,15 @@ export default function MatchEntry() {
         <Link href="/admin/fixtures" className="px-4 py-2 rounded border">← Back to Fixtures</Link>
         <button onClick={()=>save(false)} className="px-4 py-2 rounded bg-black text-white">Save</button>
         <button onClick={()=>save(true)} className="px-4 py-2 rounded bg-blue-600 text-white">Save & Back</button>
+
+        {/* NEW: Run Auto-Subs */}
+        <button
+          onClick={runAutoSubs}
+          className="px-4 py-2 rounded border"
+          title="Apply auto-subs for GW1 across all squads"
+        >
+          Run Auto-Subs (GW1)
+        </button>
       </div>
     </div>
   );

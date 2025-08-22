@@ -18,6 +18,15 @@ const MAX_PER_TEAM = 3;
 const BUDGET = 100.0;
 
 /* ---------- helpers ---------- */
+const safeJson = async (res: Response) => {
+  const txt = await res.text();
+  try {
+    return txt ? JSON.parse(txt) : {};
+  } catch {
+    return {};
+  }
+};
+
 function sumPrice(players: Player[], ids: number[]) {
   return ids.reduce((s, id) => {
     const p = players.find((x) => x.id === id);
@@ -44,6 +53,7 @@ function countByTeam(players: Player[], ids: number[]) {
 
 export default function MyTeamPage() {
   const router = useRouter();
+
   const [loading, setLoading] = useState(true);
   const [players, setPlayers] = useState<Player[]>([]);
   const [picked, setPicked] = useState<number[]>([]);
@@ -52,16 +62,33 @@ export default function MyTeamPage() {
   const load = async () => {
     setLoading(true);
     setError(null);
+
     const r = await fetch("/api/my-team", { cache: "no-store" });
-    const j = await r.json();
+
+    // If not logged in, bounce to login and return early.
+    if (r.status === 401) {
+      setLoading(false);
+      router.replace("/login?next=/my-team");
+      return;
+    }
+
+    const j = await safeJson(r);
     if (!r.ok) {
       setError(j.error || "Failed to load");
       setLoading(false);
       return;
     }
+
+    // 🚪 If user already has a full squad, go straight to Transfers
+    const pickCount = Array.isArray(j.squad?.picks) ? j.squad.picks.length : 0;
+    if (pickCount === 15) {
+      router.replace("/transfers");
+      return;
+    }
+
     setPlayers(j.players);
 
-    // Coerce whatever comes back into a clean number[] of player IDs
+    // Normalize to a clean number[] of player IDs
     const ids =
       Array.isArray(j.squad?.picks)
         ? j.squad.picks
@@ -75,6 +102,7 @@ export default function MyTeamPage() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggle = (id: number) => {
@@ -94,7 +122,6 @@ export default function MyTeamPage() {
 
       // position caps
       const posCounts = countByPos(players, next);
-      (Object.keys(POS_LIMITS) as (keyof typeof POS_LIMITS)[]).forEach(() => void 0);
       for (const pos of Object.keys(POS_LIMITS) as (keyof typeof POS_LIMITS)[]) {
         if (posCounts[pos] > POS_LIMITS[pos]) {
           setError(`Too many ${pos}: ${posCounts[pos]}/${POS_LIMITS[pos]}`);
@@ -115,7 +142,9 @@ export default function MyTeamPage() {
       const spentNow = sumPrice(players, next);
       if (spentNow > BUDGET + 1e-9) {
         setError(
-         `Budget exceeded: ${spentNow.toFixed(1)} / ${BUDGET.toFixed(1)} (you can keep picking but must get under to save)`
+          `Budget exceeded: ${spentNow.toFixed(1)} / ${BUDGET.toFixed(
+            1
+          )} (you can keep picking but must get under to save)`
         );
       }
 
@@ -130,13 +159,13 @@ export default function MyTeamPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerIds: picked }),
     });
-    const j = await r.json();
+    const j = await safeJson(r);
     if (!r.ok) {
       setError(j.error || "Save failed");
       return;
     }
     alert("Squad saved!");
-    router.push("/my-team/lineup");
+    router.replace("/my-team/lineup");
   };
 
   if (loading) return <div className="p-6">Loading…</div>;
@@ -148,8 +177,8 @@ export default function MyTeamPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-xl font-bold">My Team</h1>
-      <p className="text-sm text-gray-600">Pick 15 players total. (No bench/captains yet.)</p>
+      <h1 className="text-xl font-bold">Pick Your Initial Squad</h1>
+      <p className="text-sm text-gray-600">Choose 15 players. You won’t return to this page after saving.</p>
       {error && <div className="text-red-600">{error}</div>}
 
       <div className="flex items-center gap-3">
@@ -157,9 +186,7 @@ export default function MyTeamPage() {
         <span>{picked.length} / 15</span>
 
         <span
-          className={`ml-4 ${
-            budgetLeftNum < 0 ? "text-red-600 font-semibold" : "text-gray-700"
-          }`}
+          className={`ml-4 ${budgetLeftNum < 0 ? "text-red-600 font-semibold" : "text-gray-700"}`}
           title={budgetLeftNum < 0 ? "You are over budget" : "Budget remaining"}
         >
           Budget left: {budgetLeft} / {BUDGET.toFixed(1)}
