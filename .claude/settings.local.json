@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npx prisma studio:*)",
+      "Bash(npm install:*)",
+      "Bash(move page.tsx \"(main)\"\")",
+      "Bash(pkill:*)",
+      "Bash(npm run dev:*)",
+      "Read(/C:\\Users\\Admin\\Desktop\\fantasyuaeleague/**)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "C:\\c\\Users\\Admin\\Desktop\\fantasyuaeleague\\ful\\src"
+    ]
+  }
+}

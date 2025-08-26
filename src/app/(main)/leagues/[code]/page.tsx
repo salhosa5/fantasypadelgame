@@ -9,7 +9,18 @@ export default function LeagueStandings() {
   const { code } = useParams<{ code: string }>();
   const invite = String(code).toUpperCase();
 
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<{
+    league?: { 
+      name: string; 
+      members?: Array<{ 
+        userId: string; 
+        name: string; 
+        gwPoints: number; 
+        totalPoints: number; 
+      }> 
+    };
+    join?: boolean;
+  } | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const safeJson = async (res: Response) => {
@@ -67,7 +78,7 @@ export default function LeagueStandings() {
           </tr>
         </thead>
         <tbody>
-          {standings.map((row: any, i: number) => (
+          {standings.map((row: { userId: string; name: string; gwPoints: number; totalPoints: number }, i: number) => (
             <tr key={row.userId} className="border-t">
               <td className="px-3 py-2">{i + 1}</td>
               <td className="px-3 py-2">{row.name}</td>
