@@ -48,6 +48,7 @@ model User {
   leagues        LeagueMember[]
   League         League[]
   LeagueStanding LeagueStanding[]
+  usedChips      UsedChip[]
 }
 
 model Team {
@@ -86,6 +87,7 @@ model Gameweek {
   transfers Transfer[]
   points    UserPoints[]
   standings LeagueStanding[]
+  usedChips UsedChip[]
 }
 
 model Fixture {
@@ -243,4 +245,18 @@ model SquadScore {
   updatedAt DateTime @updatedAt
 
   squad UserSquad @relation(fields: [squadId], references: [id], onDelete: Cascade)
+}
+
+// Track which chips have been used by users (consumed chips can't be used again)
+model UsedChip {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  chip       ChipType
+  gameweekId Int
+  gameweek   Gameweek @relation(fields: [gameweekId], references: [id])
+  usedAt     DateTime @default(now())
+
+  @@unique([userId, chip])
+  @@index([userId])
 }

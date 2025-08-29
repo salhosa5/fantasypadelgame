@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 
-type Chip = "NONE" | "BENCH_BOOST" | "TRIPLE_CAPTAIN" | "TWO_CAPTAINS";
+type Chip = "NONE" | "WILDCARD" | "BENCH_BOOST" | "TRIPLE_CAPTAIN" | "TWO_CAPTAINS";
 
 async function uid() {
   const jar = await cookies();
@@ -18,9 +18,23 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const chip: Chip = body.chip;
 
-    const allowed: Chip[] = ["NONE", "BENCH_BOOST", "TRIPLE_CAPTAIN", "TWO_CAPTAINS"];
+    const allowed: Chip[] = ["NONE", "WILDCARD", "BENCH_BOOST", "TRIPLE_CAPTAIN", "TWO_CAPTAINS"];
     if (!allowed.includes(chip)) {
       return NextResponse.json({ error: "Invalid chip" }, { status: 400 });
+    }
+
+    // Check if chip has already been used (except for NONE which clears chip selection)
+    if (chip !== "NONE") {
+      const existingUsage = await prisma.usedChip.findUnique({
+        where: { userId_chip: { userId, chip } },
+        include: { gameweek: { select: { name: true } } },
+      });
+      
+      if (existingUsage) {
+        return NextResponse.json({ 
+          error: `${chip} chip has already been used in ${existingUsage.gameweek.name}` 
+        }, { status: 400 });
+      }
     }
 
     // "Active" GW is the one you are editing: the next upcoming, else the most recent

@@ -110,9 +110,19 @@ export async function POST(req: Request) {
     const inIds = playerIds.filter((id) => !oldSet.has(id));
     const transfersMade = Math.max(outIds.length, inIds.length);
 
-    // Carry free transfers (cap 5): nextFree = clamp(currFree - used + 1, 1, 5)
+    // Handle Wildcard vs normal transfers
     const currFree = Number(squad.freeTransfers ?? 1);
-    const nextFree = Math.max(1, Math.min(5, currFree - transfersMade + 1));
+    let nextFree: number;
+    let isWildcardActive = false;
+    
+    if (chip === "WILDCARD") {
+      // Wildcard: unlimited transfers, no point deductions, reset to 1 free transfer next GW
+      nextFree = 1;
+      isWildcardActive = true;
+    } else {
+      // Normal transfers: carry free transfers (cap 5): nextFree = clamp(currFree - used + 1, 1, 5)
+      nextFree = Math.max(1, Math.min(5, currFree - transfersMade + 1));
+    }
 
     await prisma.$transaction(async (tx) => {
       // wipe/recreate picks
@@ -157,7 +167,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       transfers: transfersMade,
-      projectedHit: Math.max(0, transfersMade - currFree) * 4,
+      projectedHit: isWildcardActive ? 0 : Math.max(0, transfersMade - currFree) * 4,
       freeTransfers: nextFree,
       chip: chip ?? squad.chip ?? "NONE",
     });

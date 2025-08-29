@@ -9,7 +9,9 @@
       "Bash(npm run dev:*)",
       "Read(/C:\\Users\\Admin\\Desktop\\fantasyuaeleague/**)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm run seed:*)",
+      "Bash(npx prisma migrate dev:*)"
     ],
     "deny": [],
     "ask": [],

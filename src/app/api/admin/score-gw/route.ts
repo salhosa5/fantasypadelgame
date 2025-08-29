@@ -102,7 +102,11 @@ export async function POST(req: Request) {
 
       const made = transfersByUser.get(squad.userId) ?? 0;
       const free = squad.freeTransfers ?? 1;
-      total -= Math.max(0, made - free) * 4;
+      
+      // Don't deduct points if Wildcard was used this gameweek
+      if (squad.chip !== "WILDCARD") {
+        total -= Math.max(0, made - free) * 4;
+      }
 
       await prisma.squadScore.upsert({
         where: { squadId: squad.id },
@@ -124,6 +128,19 @@ export async function POST(req: Request) {
           where: { userId_gameweekId: { userId: squad.userId, gameweekId: gw.id } },
           data: { totalPoints: Number(sum._sum.gwPoints ?? 0) },
         });
+
+        // Mark chip as consumed if it was used this gameweek (except NONE)
+        if (squad.chip && squad.chip !== "NONE") {
+          await tx.usedChip.upsert({
+            where: { userId_chip: { userId: squad.userId, chip: squad.chip } },
+            update: {}, // Already exists, no update needed
+            create: {
+              userId: squad.userId,
+              chip: squad.chip,
+              gameweekId: gw.id,
+            },
+          });
+        }
       });
     }
 

@@ -828,7 +828,7 @@ export default function TransfersPage() {
 
   const loadChipAvailability = async () => {
     try {
-      const r = await fetch("/api/chips", { cache: "no-store" });
+      const r = await fetch("/api/chip-availability", { cache: "no-store" });
       const j = await r.json();
       if (r.ok) setChipAvailability(j);
     } catch (e) {
