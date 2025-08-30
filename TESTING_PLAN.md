@@ -2,20 +2,70 @@
 
 **Date Created**: August 29, 2025  
 **Launch Target**: September 1, 2025 (3 days)  
-**Testing Duration**: 2-3 hours for complete simulation
+**Testing Duration**: 2-3 hours for complete simulation  
+**Domain**: fantasyleague.ae
 
 ## 🎯 Overview
-This document provides a comprehensive testing strategy to simulate the full fantasy football experience including user registration, squad management, transfers, chips activation, live scoring, and league functionality.
+This document provides a comprehensive testing strategy to simulate the full fantasy football experience including deployment to production, user registration, squad management, transfers, chips activation, live scoring, and league functionality.
+
+## ✅ Latest Updates (August 29, 2025)
+**All chip functionality has been completely implemented and fixed:**
+- ✅ **Wildcard**: Unlimited transfers without point deductions
+- ✅ **Triple Captain**: 3x points multiplier working correctly  
+- ✅ **Bench Boost**: All 15 players counted, auto-subs disabled
+- ✅ **Two Captains**: Both captain and vice-captain get 2x multiplier
+- ✅ **Chip Consumption**: Chips can only be used once per season
+- ✅ **Chip Availability**: Real-time tracking of available vs used chips
+
+**Database**: Supabase PostgreSQL fully configured with all latest changes
+**Deployment**: Ready for production deployment to fantasyleague.ae
 
 ---
 
 ## Pre-Testing Setup
 
-### Requirements
-- Development server running: `npm run dev`
-- Database seeded: `npm run seed`
-- Admin access: `http://localhost:3000/admin`
-- Multiple browser windows/incognito tabs for multi-user testing
+### STEP 0: Deploy to Production (30 minutes)
+
+#### 🚀 Vercel Deployment
+1. **Go to**: https://vercel.com/new
+2. **Import Repository**: Select your `FUL` GitHub repository
+3. **Configure Project**:
+   - Project Name: `fantasyleague-ae`
+   - Framework: Next.js (auto-detected)
+   - Root Directory: `./` (default)
+
+4. **Environment Variables** (CRITICAL):
+   ```bash
+   DATABASE_URL=postgresql://postgres:FulDB2025alpha@db.gizroqibmzqtgqlpptsx.supabase.co:5432/postgres?sslmode=require
+   NEXTAUTH_URL=https://fantasyleague.ae
+   NEXTAUTH_SECRET=b4f1b2c0c9d341b3a2b8e1b7d5b0f6a9c4e2d1a0f7c3b8a6e1d2c4b6a8f0d3c1
+   ```
+
+5. **Click Deploy** (takes 2-3 minutes)
+
+#### 🌐 Domain Configuration
+1. **In Vercel Dashboard**:
+   - Settings → Domains
+   - Add: `fantasyleague.ae`
+   - Add: `www.fantasyleague.ae`
+
+2. **In Domain Registrar DNS**:
+   ```
+   Type: A     Name: @    Value: 76.76.19.61
+   Type: CNAME Name: www  Value: cname.vercel-dns.com
+   ```
+
+#### ✅ Deployment Verification
+- [ ] Vercel URL loads correctly (e.g., `fantasyleague-ae-xyz.vercel.app`)
+- [ ] Database connection working
+- [ ] fantasyleague.ae resolves (may take 5-30 minutes for DNS)
+- [ ] SSL certificate active (https://)
+
+### Testing Requirements
+- **Production site**: https://fantasyleague.ae
+- **Admin access**: https://fantasyleague.ae/admin
+- **Supabase database**: Already configured and ready
+- **Multiple browser windows/incognito tabs** for multi-user testing
 
 ---
 
@@ -435,6 +485,39 @@ Fix: [Solution applied]
 
 ---
 
+## 🚨 Deployment Troubleshooting
+
+### Common Issues & Solutions
+
+**If Vercel build fails:**
+- Check environment variables are typed exactly (no extra spaces)
+- Verify DATABASE_URL includes `?sslmode=require` at the end
+- Try redeploying after fixing env vars
+
+**If database connection fails:**
+- Test connection locally first: `npx prisma db pull`
+- Verify Supabase database is still active
+- Check for typos in connection string
+
+**If domain doesn't work:**
+- DNS can take 5-30 minutes to propagate
+- Test the Vercel URL first (e.g., `fantasyleague-ae-xyz.vercel.app`)
+- Verify DNS records are exactly right (no typos)
+- Try accessing via www.fantasyleague.ae vs fantasyleague.ae
+
+**If pages show errors:**
+- Check browser console (F12) for detailed error messages
+- Try incognito/private browsing
+- Clear browser cache and cookies
+
+### Quick Tests for Tomorrow
+1. **Before full simulation**: Visit https://fantasyleague.ae and verify homepage loads
+2. **Quick registration test**: Create one test account to verify database works
+3. **Admin access**: Check https://fantasyleague.ae/admin loads correctly
+4. **If any issues**: Use the Vercel URL as backup during testing
+
+---
+
 **Testing Team**: Claude Code Assistant  
-**Document Version**: 1.0  
-**Last Updated**: August 29, 2025
+**Document Version**: 2.0  
+**Last Updated**: August 29, 2025 - Added deployment instructions and chip fixes
