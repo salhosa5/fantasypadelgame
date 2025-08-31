@@ -13,7 +13,8 @@
       "Bash(npm run seed:*)",
       "Bash(npx prisma migrate dev:*)",
       "Bash(git push:*)",
-      "Bash(npx prisma:*)"
+      "Bash(npx prisma:*)",
+      "WebFetch(domain:padelintelligence.live)"
     ],
     "deny": [],
     "ask": [],
