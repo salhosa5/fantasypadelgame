@@ -47,6 +47,7 @@
 ### **Squad Management Between Rounds**
 - **Captain Changes**: Can change captain before each round (free)
 - **Transfers**: **1 free transfer per round** (cannot stack unused transfers)
+- **Chip Usage**: Activate performance-specific chips for strategic advantages
 - **Elimination Consequences**: If your players get eliminated, you must play with fewer players or use transfers wisely
 - **Strategic Depth**: Initial squad selection still critical - bad picks create lasting problems
 
@@ -70,20 +71,17 @@
 
 ### **Captain Multipliers**
 - **Regular Captain**: All points × 2
-- **Triple Captain Chip**: All points × 3 (limited use chip)
 
 ---
 
 ## 🎮 Chips System
 
-### **Available Chips** (Adapted from football fantasy)
-1. **Triple Captain**: Captain gets 3x points instead of 2x (once per tournament)
-2. **Two Captains**: Select two players who both get 2x multiplier (once per tournament)
+### **Available Chips** (Padel-specific performance boosters)
+1. **Super Smasher**: Select one player for the round - their successful smashes bonus doubles (every 3 smashes = +2pts instead of +1pt)
+2. **Assist Master**: Select one player for the round - their assists bonus doubles (every 2 assists = +2pts instead of +1pt)  
+3. **Winner Machine**: Select one player for the round - their winners bonus doubles (every 5 winners = +2pts instead of +1pt)
 
-### **Removed Chips** 
-- **No Wildcard**: Doesn't fit tournament format
-- **No Bench Boost**: No bench players in this system
-- **No Surface Specialist**: Indoor/outdoor doesn't significantly impact padel
+*Each chip can be used once per tournament and targets individual performance categories rather than overall scoring multipliers. Only one chip can be activated per round - no stacking multiple boosters.*
 
 ---
 
